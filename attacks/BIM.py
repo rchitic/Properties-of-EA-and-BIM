@@ -3,22 +3,12 @@ Use BIM attack to generate adversarial images for the 10 CNNs.
 '''
 
 import numpy as np
-import json
-import os
-import sys
 import time
 
 import cv2
 from PIL import Image
 
 import torch
-import torch.nn as nn
-import torch.optim as optim
-
-import torchvision.utils
-from torchvision import models
-import torchvision.datasets as dsets
-import torchvision.transforms as transforms
 import torchattacks
 
 from utils import create_torchmodel, prediction_preprocess
