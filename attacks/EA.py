@@ -5,12 +5,9 @@ The noise is bounded to (-epsilon,epsilon) and only some pixels are mutated, not
 '''
 
 # general
-import os
 import time
 import random
 from random import shuffle
-import math
-import sys
 import numpy as np
 
 # image loading
@@ -19,11 +16,7 @@ import cv2
 
 # torch
 import torch
-#os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-#print(torch.rand(1, device="cuda"))
-#torch.cuda.empty_cache()
-from torchvision import transforms
-from utils import create_torchmodel, image_folder_custom_label, create_torchmodel_SIN
+from utils import create_torchmodel, prediction_preprocess, softmax
 
 # gpu
 use_cuda = True
@@ -31,11 +24,6 @@ device = torch.device("cuda" if use_cuda else "cpu")
 torch.backends.cudnn.deterministic = True
 
 #------------------------------------------------------------------------------------------------------------------------------
-# **torch input transformations**
-prediction_preprocess = transforms.Compose([
-    transforms.ToTensor(), # ToTensor : [0, 255] -> [0, 1], (224,224,3) -> (3,224,224)   
-])
-
 # **EA functions**
 def run_network(model, images):
     with torch.no_grad():
@@ -58,7 +46,6 @@ def get_fitness(probs):
     fitness = probs 
     return fitness
 
-#@nb.njit
 def selection(images, fitness):    
     idx_elite = fitness.argsort()[-10:]
     elite_fitness = fitness[idx_elite]
@@ -136,10 +123,6 @@ def crossover(crossover_group, parents_idx, im_size, s, generation):
         crossedover_group[parent_index_2, z, start_x : start_x + size_x, start_y : start_y + size_y] = temp
         
     return crossedover_group
-
-def softmax(x): 
-    e_x = np.exp(x - np.max(x)) 
-    return e_x / e_x.sum()
 
 # **Workflow**
 def workflow(or_softmax,target_softmax,iteration,network_name,boundary_min, boundary_max, epsilon,alpha,images, pop_size, im_shape, im_size, class_no, or_class_no, ancestor, ds):
