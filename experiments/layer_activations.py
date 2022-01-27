@@ -23,6 +23,9 @@ import cv2
 
 # torch
 import torch
+
+# own
+import params
 from utils import create_torchmodel, prediction_preprocess, softmax
 
 # gpu
@@ -32,9 +35,11 @@ torch.backends.cudnn.deterministic = True
 
 # params
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-class_dict = {'abacus':[398,641],'acorn':[988,947],'baseball':[429,541],'brown_bear':[294,150],'broom':[462,472],'canoe':[472,703],'hippopotamus':[344,368],'llama':[355,340],'maraca':[641,624],'mountain_bike':[671,752]}
-names = list(class_dict.keys())
-networks = ['VGG16','VGG19','ResNet50','ResNet101','ResNet152','DenseNet121','DenseNet169','DenseNet201','MobileNet','MNASNet']
+networks = params.networks
+class_dict = params.class_dict
+names = params.names
+data_path = params.data_path
+results_path = params.results_path
 
 resnet50_SIN = create_torchmodel_SIN('ResNet50_SIN')
 vgg16 = create_torchmodel('VGG16')
@@ -54,11 +59,11 @@ bagnet33 = create_torchmodel('BagNet33')
 m = [vgg16,vgg19,resnet50,resnet101,resnet152,densenet121,densenet169,densenet201,mobilenet,mnasnet]
 
 activations_allImages = {}
-results_loc = "/home/users/rchitic/tvs/results"
 image_type = sys.argv[1] #EA or BIM
 
-file_path_ancestor_activations = results_loc + '/{}/activations_total_ancestor.pickle'.format(image_type)
-file_path_adversarial_activations = results_loc + '/{}/activations_stats_quartile3_complete{}.pickle'.format(image_type,image_type)
+file_path_ancestor_activations = results_path + '/{}/activations_total_ancestor.pickle'.format(image_type)
+quartile = '1'
+file_path_adversarial_activations = results_path + '/{}/activations_stats_quartile{}_complete{}.pickle'.format(image_type,quartile,image_type)
 
 if os.path.exists(file_path_adversarial_activations):
 	activations_allImages = pickle.load(open(file_path_adversarial_activations,'rb'))
@@ -70,6 +75,7 @@ if os.path.exists(file_path_ancestor_activations):
 else:
 	ancestor_total = get_activation_ancestors()
 
+#-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 def get_activation_ancestor(name):
     def hook(model, input, output):
         activation[name] = output.detach().cpu().detach().numpy()
@@ -126,30 +132,31 @@ def get_activation_ancestors():
 
 
 # adversarial images
-for object_name in names:
-	activations_perImage = {}
-	for i, model in enumerate(m):
-		print(i)
-		activation = {}
-		activation_ancestor = {}
-		network = networks[i]
-		print(object_name,network)
-		if shuffle:
-			filename_load = results_loc + "/{}/{}/shuffle_network/112/{}/images/adv_network.npy".format(image_type,network,object_name)
-		else:
-			filename_load = results_loc + "/{}/{}/attack/{}/image.npy".format(image_type,network,object_name)
-		image = torch.from_numpy(np.load(filename_load)).to('cuda').float()
-		hooks = {}
-		for module_name, module in model.named_modules():
-			if isinstance(module,nn.Conv2d):
-				hooks[module_name] = module.register_forward_hook(get_activation_adversarial(module_name,object_name,network))
-		output = model(image)
-		activations_perImage[network] = list(activation.values())
-	activations_allImages[object_name] = activations_perImage
+def get_activation_adversarials():
+    for object_name in names:
+        activations_perImage = {}
+        for i, model in enumerate(m):
+            print(i)
+            activation = {}
+            activation_ancestor = {}
+            network = networks[i]
+            print(object_name,network)
+            if shuffle:
+                filename_load = results_path + "/{}/{}/shuffle_network/112/{}/images/adv_network.npy".format(image_type,network,object_name)
+            else:
+                filename_load = results_path + "/{}/{}/attack/{}/image.npy".format(image_type,network,object_name)
+            image = torch.from_numpy(np.load(filename_load)).to('cuda').float()
+            hooks = {}
+            for module_name, module in model.named_modules():
+                if isinstance(module,nn.Conv2d):
+                    hooks[module_name] = module.register_forward_hook(get_activation_adversarial(module_name,object_name,network))
+            output = model(image)
+            activations_perImage[network] = list(activation.values())
+        activations_allImages[object_name] = activations_perImage
 
-with open(file_path_adversarial_activations, "wb") as dict_file:
-	pickle.dump(activations_allImages, dict_file)
-dict_file.close()
+    with open(file_path_adversarial_activations, "wb") as dict_file:
+        pickle.dump(activations_allImages, dict_file)
+    dict_file.close()
 
 
 

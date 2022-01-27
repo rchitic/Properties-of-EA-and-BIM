@@ -19,9 +19,9 @@ import cv2
 
 # torch
 import torch
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-print(torch.rand(1, device="cuda"))
-torch.cuda.empty_cache()
+
+# own
+import params
 from utils import create_torchmodel, softmax, prediction_preprocess
 
 # gpu
@@ -48,8 +48,11 @@ def add_patch(network_name,padded_orig,padded_adv,patch_id):
 
 # params
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-class_dict = {'abacus':[398,641],'acorn':[988,947],'baseball':[429,541],'brown_bear':[294,150],'broom':[462,472],'canoe':[472,703],'hippopotamus':[344,368],'llama':[355,340],'maraca':[641,624],'mountain_bike':[671,752]}
-names = list(class_dict.keys())
+networks = params.networks
+class_dict = params.class_dict
+names = params.names
+data_path = params.data_path
+results_path = params.results_path
 
 SIN = False
 if SIN:
@@ -71,7 +74,6 @@ else:
 	m = [vgg16,vgg19,resnet50,resnet101,resnet152,densenet121,densenet169,densenet201,mobilenet,mnasnet]
 
 attack_name = 'EA'
-base_path = "/home/users/rchitic/tvs/"
 
 # Main
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -92,8 +94,7 @@ for i,model in enumerate(m):
 			ancestor = ancestor.astype(np.uint8)
 			ancestor = prediction_preprocess(Image.fromarray(ancestor)).cpu().detach().numpy()
 
-			results_loc = base_path + "results"
-			filename_load = results_loc + "/{}/{}/attack/{}/image.npy".format(attack_name,network,name)
+			filename_load = results_path + "/{}/{}/attack/{}/image.npy".format(attack_name,network,name)
 			adv = np.load(filename_load)
 
 			# Pad images
@@ -119,7 +120,7 @@ for i,model in enumerate(m):
 				p_target.append(pred[0,target_class])
 
 			# save results
-			filename_save_orig = results_loc + "/{}/{}/patch_replacement_overlapping/patch_size{}/{}/orig.npy".format(attack_name,network,patch_size,name)
-			filename_save_target = results_loc + "/{}/{}/patch_replacement_overlapping/patch_size{}/{}/target.npy".format(attack_name,network,patch_size,name)
+			filename_save_orig = results_path + "/{}/{}/patch_replacement_overlapping/patch_size{}/{}/orig.npy".format(attack_name,network,patch_size,name)
+			filename_save_target = results_path + "/{}/{}/patch_replacement_overlapping/patch_size{}/{}/target.npy".format(attack_name,network,patch_size,name)
 			np.save(filename_save_orig,p_orig)
 			np.save(filename_save_target,p_target)

@@ -18,16 +18,22 @@ import cv2
 
 # torch
 import torch
-#os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-#print(torch.rand(1, device="cuda"))
-#torch.cuda.empty_cache()
-from torchvision import transforms
+
+# own
+import params
 from utils import create_torchmodel, prediction_preprocess, Normalize
 
 # gpu
 use_cuda = True
 device = torch.device("cuda" if use_cuda else "cpu")
 torch.backends.cudnn.deterministic = True
+
+# params
+networks = params.networks
+class_dict = params.class_dict
+names = params.names
+data_path = params.data_path
+results_path = params.results_path
 
 #------------------------------------------------------------------------------------------------------------------------------
 norm_layer = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -111,7 +117,7 @@ compute_adv = True
 if not compute_adv:
 	networks=['']
 
-attack_type = "EA2"
+attack_type = "EA"
 
 for network in networks:
 	for name in names:
@@ -120,11 +126,11 @@ for network in networks:
 		target_class = class_dict[name][1]
 		
 		# Get ancestor and adversarial images
-		ancestor = cv2.imread('/home/users/rchitic/tvs/data/imagenet_{}/{}/{}.jpg'.format(name,name,name)) #BGR image
+		ancestor = cv2.imread(data_path+'/imagenet_{}/{}/{}.jpg'.format(name,name,name)) #BGR image
 		ancestor = cv2.resize(ancestor,(224,224))[:,:,::-1] #RGB image
 		ancestor = ancestor.astype(np.uint8)
 		ancestor = prediction_preprocess(ancestor)
-		results_loc = "/home/users/rchitic/tvs/results/{}".format(attack_type)
+		results_loc = results_path+"/{}".format(attack_type)
 				
 		if compute_adv: 
 			adv = np.load(results_loc + "/{}/attack/{}/image.npy".format(network,name))

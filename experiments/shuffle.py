@@ -18,6 +18,9 @@ import cv2
 
 # torch
 import torch
+
+# own
+import params
 from utils import create_torchmodel, prediction_preprocess, softmax
 
 # gpu
@@ -55,7 +58,7 @@ if SIN:
 	m = [resnet50_SIN]
 	networks = ['ResNet50_SIN']
 else:
-	networks = ['VGG16','VGG19','ResNet50','ResNet101','ResNet152','DenseNet121','DenseNet169','DenseNet201','MobileNet','MNASNet']
+	networks = params.networks
 
 	bagnet9 = create_torchmodel('BagNet9')
 	bagnet17 = create_torchmodel('BagNet17')
@@ -72,10 +75,13 @@ else:
 	mnasnet = create_torchmodel('MNASNet')
 	m = [vgg16,vgg19,resnet50,resnet101,resnet152,densenet121,densenet169,densenet201,mobilenet,mnasnet]
 
-class_dict = {'abacus':[398,641],'acorn':[988,947],'baseball':[429,541],'brown_bear':[294,150],'broom':[462,472],'canoe':[472,703],'hippopotamus':[344,368],'llama':[355,340],'maraca':[641,624],'mountain_bike':[671,752]}
-names = list(class_dict.keys())
+class_dict = params.class_dict
+names = params.names
+data_path = params.data_path
+results_path = params.results_path
+shuffle_combs_path = params.shuffle_combs_path
+
 attack_name = 'EA'
-base_path = "/home/users/rchitic/tvs/"
 
 # Main
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -83,26 +89,26 @@ for i,model in enumerate(m):
 	network = networks[i]
 	for shuffle_size in [8,16,32,56,112]:
 		half = int(shuffle_size/2)
-		comb1 = np.load('/mnt/irisgpfs/users/rchitic/tvs/code/shuffle_combs/'+str(shuffle_size)+'/comb1.npy')
-		comb2 = np.load('/mnt/irisgpfs/users/rchitic/tvs/code/shuffle_combs/'+str(shuffle_size)+'/comb2.npy')
+		comb1 = np.load(shuffle_combs_path+str(shuffle_size)+'\\comb1.npy')
+		comb2 = np.load(shuffle_combs_path+str(shuffle_size)+'\\comb2.npy')
 
 		for name in names:
 			print(network,shuffle_size,name)
 			# Get ancestor and adversarial images
-			ancestor = cv2.imread('/home/users/rchitic/tvs/data/imagenet_{}/{}/{}.jpg'.format(name,name,name)) #BGR image
+			ancestor = cv2.imread(data_path+'/imagenet_{}/{}/{}.jpg'.format(name,name,name)) #BGR image
 			ancestor = cv2.resize(ancestor,(224,224))[:,:,::-1] #RGB image
 			ancestor = ancestor.astype(np.uint8)
 			ancestor = prediction_preprocess(Image.fromarray(ancestor)).cpu().detach().numpy()
-			results_loc = base_path + "results/{}".format(attack_name)
-			adv_network = np.load(results_loc + "/{}/attack/{}/image.npy".format(network,name))
+			results_loc = results_path+"\\{}".format(attack_name)
+			adv_network = np.load(results_loc + "\\{}\\attack\\{}\\image.npy".format(network,name))
 			
 			# Shuffle images
 			ancestor = shuffle(ancestor,comb1,comb2,half)
 			adv_network = shuffle(adv_network,comb1,comb2,half)
 
-			image_save_loc = results_loc +"/{}/shuffle_network/{}/{}/images".format(network,shuffle_size,name)
-			np.save(image_save_loc + "/ancestor.npy",ancestor)
-			np.save(image_save_loc + "/adv_network.npy",adv_network)
+			image_save_loc = results_loc +"\\{}\\shuffle_network\\{}\\{}\\images".format(network,shuffle_size,name)
+			np.save(image_save_loc + "\\ancestor.npy",ancestor)
+			np.save(image_save_loc + "\\adv_network.npy",adv_network)
 
 			# predict using pre-trained network
 			p_ancestor = run_network(model,ancestor)
@@ -111,9 +117,9 @@ for i,model in enumerate(m):
 			p_adv_bagnet17 = run_network(bagnet17,adv_network)
 			p_adv_bagnet33 = run_network(bagnet33,adv_network)
 
-			pred_save_loc = results_loc +"/{}/shuffle_network/{}/{}/preds".format(network,shuffle_size,name)
-			np.save(pred_save_loc + "/ancestor.npy",p_ancestor)
-			np.save(pred_save_loc + "/adv_network.npy",p_adv_network)
-			np.save(pred_save_loc + "/adv_bagnet9.npy",p_adv_bagnet9)
-			np.save(pred_save_loc + "/adv_bagnet17.npy",p_adv_bagnet17)
-			np.save(pred_save_loc + "/adv_bagnet33.npy",p_adv_bagnet33)
+			pred_save_loc = results_loc +"\\{}\\shuffle_network\\{}\\{}\\preds".format(network,shuffle_size,name)
+			np.save(pred_save_loc + "\\ancestor.npy",p_ancestor)
+			np.save(pred_save_loc + "\\adv_network.npy",p_adv_network)
+			np.save(pred_save_loc + "\\adv_bagnet9.npy",p_adv_bagnet9)
+			np.save(pred_save_loc + "\\adv_bagnet17.npy",p_adv_bagnet17)
+			np.save(pred_save_loc + "\\adv_bagnet33.npy",p_adv_bagnet33)
