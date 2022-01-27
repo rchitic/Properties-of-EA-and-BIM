@@ -5,9 +5,12 @@ The noise is bounded to (-epsilon,epsilon) and only some pixels are mutated, not
 '''
 
 # general
+import os
 import time
 import random
 from random import shuffle
+import math
+import sys
 import numpy as np
 
 # image loading
@@ -16,15 +19,18 @@ import cv2
 
 # torch
 import torch
-from utils import create_torchmodel, prediction_preprocess, softmax
+
+# own
+import params
+from utils import create_torchmodel
 
 # gpu
 use_cuda = True
 device = torch.device("cuda" if use_cuda else "cpu")
 torch.backends.cudnn.deterministic = True
 
-#------------------------------------------------------------------------------------------------------------------------------
 # **EA functions**
+#------------------------------------------------------------------------------------------------------------------------------
 def run_network(model, images):
     with torch.no_grad():
         images_copy = images.copy()
@@ -46,6 +52,7 @@ def get_fitness(probs):
     fitness = probs 
     return fitness
 
+#@nb.njit
 def selection(images, fitness):    
     idx_elite = fitness.argsort()[-10:]
     elite_fitness = fitness[idx_elite]
@@ -124,8 +131,12 @@ def crossover(crossover_group, parents_idx, im_size, s, generation):
         
     return crossedover_group
 
+def softmax(x): 
+    e_x = np.exp(x - np.max(x)) 
+    return e_x / e_x.sum()
+
 # **Workflow**
-def workflow(or_softmax,target_softmax,iteration,network_name,boundary_min, boundary_max, epsilon,alpha,images, pop_size, im_shape, im_size, class_no, or_class_no, ancestor, ds):
+def workflow(or_softmax,target_softmax,iteration,network_name,boundary_min, boundary_max, epsilon,alpha,images, pop_size, im_size, class_no, or_class_no, ancestor):
 
     # create the neural network model
     with torch.no_grad():
@@ -180,42 +191,47 @@ def workflow(or_softmax,target_softmax,iteration,network_name,boundary_min, boun
     print(f"Total time: {duration/60} min")        
     return images, np.array(or_softmax), np.array(target_softmax), iteration, duration
 
-#----------------------------------------------------------------------------------------------------------------------
 # Main 
-networks = {1:'VGG16',2:'VGG19',3:'ResNet50',4:'ResNet101',5:'ResNet152',6:'DenseNet121',7:'DenseNet169',8:'DenseNet201',9:'MobileNet',10:'MNASNet',11:'BagNet9',12:'BagNet17',13:'BagNet33',14:'ResNet50_SIN'}
+#----------------------------------------------------------------------------------------------------------------------
+# General params
+networks = params.networks
+class_dict = params.class_dict
+names = params.names
+data_path = params.data_path
+results_path = params.results_path
+
+# Input network & ancestor name
 network_ID = int(sys.argv[1])
 network_name = networks[network_ID]
-
-class_dict = {'abacus':[398,641],'acorn':[988,947],'baseball':[429,541],'brown_bear':[294,150],'broom':[462,472],'canoe':[472,703],'hippopotamus':[344,368],'llama':[355,340],'maraca':[641,624],'mountain_bike':[671,752]}
-ID = int(sys.argv[2])
-name = list(class_dict.keys())[ID]
+name_ID = int(sys.argv[2])
+name = list(class_dict.keys())[name_ID]
 or_class = class_dict[name][0]
 target_class = class_dict[name][1]
 print(f"Network {network_name} image {name}")
 
-ancestor = cv2.imread('/home/users/rchitic/tvs/data/imagenet_{}/{}/{}.jpg'.format(name,name,name)) #BGR image
+# Load and preprocess ancestor
+ancestor = cv2.imread(data_path+'/imagenet_{}/{}/{}.jpg'.format(name,name,name)) #BGR image
 ancestor = cv2.resize(ancestor,(224,224))[:,:,::-1] #RGB image
 ancestor = ancestor.astype(np.uint8)
 ancestor = prediction_preprocess(Image.fromarray(ancestor)).cpu().detach().numpy()
 
+# Set EA params
 pop_size = 40
 images = np.array([ancestor]*pop_size).astype(float)
 or_softmax = []
 target_softmax = []
 iteration = 0
-im_shape = (224,224,3)
 im_size = 224*224*3
-ds = 0 # 0 for l2_norm, 1 for structural similarity
 boundary_min = 0
 boundary_max = 1
 epsilon = 8/255
 alpha = 2/255
 
 # run the EA
-res, or_softmax, target_softmax, iteration, duration = workflow(or_softmax,target_softmax,iteration,network_name, boundary_min, boundary_max, epsilon,alpha,images, pop_size, im_shape, im_size, target_class, or_class, ancestor, ds)
+res, or_softmax, target_softmax, iteration, duration = workflow(or_softmax,target_softmax,iteration,network_name, boundary_min, boundary_max, epsilon,alpha,images, pop_size, im_size, target_class, or_class, ancestor)
 
 # save results	
-file_save = "/home/users/rchitic/tvs/results/EA2/{}/attack/{}/".format(network_name,name)
+file_save = results_path+"/EA/{}/attack/{}/".format(network_name,name)
 np.save(file_save+"image.npy", res[0])
 np.save(file_save+"or_softmax.npy", or_softmax)
 np.save(file_save+"target_softmax.npy", target_softmax)
