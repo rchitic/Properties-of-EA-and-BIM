@@ -58,7 +58,7 @@ results_loc = "/home/users/rchitic/tvs/results"
 image_type = sys.argv[1] #EA or BIM
 
 file_path_ancestor_activations = results_loc + '/{}/activations_total_ancestor.pickle'.format(image_type)
-file_path_adversarial_activations = results_loc + '/{}/activations_stats_quartile3_transferability_complete{}.pickle'.format(image_type,image_type)
+file_path_adversarial_activations = results_loc + '/{}/activations_stats_quartile3_complete{}.pickle'.format(image_type,image_type)
 
 if os.path.exists(file_path_adversarial_activations):
 	activations_allImages = pickle.load(open(file_path_adversarial_activations,'rb'))
