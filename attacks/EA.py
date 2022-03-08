@@ -148,7 +148,7 @@ def workflow(or_softmax,target_softmax,iteration,network_name,boundary_min, boun
     start = time.time()
 
     # repeat until image is confidently adversarial
-    while(np.max(probs_softmax) < 0.999):
+    while((np.max(probs_softmax) < 0.999) & (iteration < G)):
                         
         # select population classes based on fitness
         elite, middle_class, elite_fitness, idx_elite, random_keep = selection(images, fitness)
@@ -168,7 +168,7 @@ def workflow(or_softmax,target_softmax,iteration,network_name,boundary_min, boun
 
         # create new population 
         images = np.concatenate((elite, crossover_group))   
-        iteration = iteration + 1
+        iteration += 1
 
         # run network with new population 
         preds_softmax = run_network(model, images)
@@ -208,6 +208,7 @@ ancestor = ancestor.astype(np.uint8)
 ancestor = prediction_preprocess(Image.fromarray(ancestor)).cpu().detach().numpy()
 
 pop_size = params.pop_size
+G = params.G
 epsilon = params.epsilon
 alpha = params.alpha
 images = np.array([ancestor]*pop_size).astype(float)
