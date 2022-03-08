@@ -21,16 +21,16 @@ import cv2
 import torch
 
 # own
+from utils import create_torchmodel, softmax, prediction_preprocess
 import params
-from utils import create_torchmodel
 
 # gpu
 use_cuda = True
 device = torch.device("cuda" if use_cuda else "cpu")
 torch.backends.cudnn.deterministic = True
 
-# **EA functions**
 #------------------------------------------------------------------------------------------------------------------------------
+# **EA functions**
 def run_network(model, images):
     with torch.no_grad():
         images_copy = images.copy()
@@ -131,12 +131,8 @@ def crossover(crossover_group, parents_idx, im_size, s, generation):
         
     return crossedover_group
 
-def softmax(x): 
-    e_x = np.exp(x - np.max(x)) 
-    return e_x / e_x.sum()
-
 # **Workflow**
-def workflow(or_softmax,target_softmax,iteration,network_name,boundary_min, boundary_max, epsilon,alpha,images, pop_size, im_size, class_no, or_class_no, ancestor):
+def workflow(or_softmax,target_softmax,iteration,network_name,boundary_min, boundary_max, epsilon,alpha,images, pop_size, im_shape, im_size, class_no, or_class_no, ancestor):
 
     # create the neural network model
     with torch.no_grad():
@@ -191,49 +187,49 @@ def workflow(or_softmax,target_softmax,iteration,network_name,boundary_min, boun
     print(f"Total time: {duration/60} min")        
     return images, np.array(or_softmax), np.array(target_softmax), iteration, duration
 
-# Main 
 #----------------------------------------------------------------------------------------------------------------------
-# General params
+# Main 
 networks = params.networks
-class_dict = params.class_dict
-names = params.names
-data_path = params.data_path
-results_path = params.results_path
-
-# Input network & ancestor name
 network_ID = int(sys.argv[1])
 network_name = networks[network_ID]
-name_ID = int(sys.argv[2])
-name = list(class_dict.keys())[name_ID]
+
+class_dict = params.class_dict
+ID = int(sys.argv[2])
+order = int(sys.argv[3]) 
+name = list(class_dict.keys())[ID]
 or_class = class_dict[name][0]
 target_class = class_dict[name][1]
-print(f"Network {network_name} image {name}")
+print(f"Network {network_name} image {name} order {order}")
 
-# Load and preprocess ancestor
-ancestor = cv2.imread(data_path+'/imagenet_{}/{}/{}.jpg'.format(name,name,name)) #BGR image
+data_path = params.data_path
+ancestor = cv2.imread(data_path.format(name,name,str(order))) #BGR image
 ancestor = cv2.resize(ancestor,(224,224))[:,:,::-1] #RGB image
 ancestor = ancestor.astype(np.uint8)
 ancestor = prediction_preprocess(Image.fromarray(ancestor)).cpu().detach().numpy()
 
-# Set EA params
-pop_size = 40
+pop_size = params.pop_size
+epsilon = params.epsilon
+alpha = params.alpha
 images = np.array([ancestor]*pop_size).astype(float)
 or_softmax = []
 target_softmax = []
 iteration = 0
+im_shape = (224,224,3)
 im_size = 224*224*3
 boundary_min = 0
 boundary_max = 1
-epsilon = 8/255
-alpha = 2/255
+
+with open('s.log','a') as f:
+	f.write("{} {} {} \n".format(network_name, name, order))
+f.close()
 
 # run the EA
-res, or_softmax, target_softmax, iteration, duration = workflow(or_softmax,target_softmax,iteration,network_name, boundary_min, boundary_max, epsilon,alpha,images, pop_size, im_size, target_class, or_class, ancestor)
+res, or_softmax, target_softmax, iteration, duration = workflow(or_softmax,target_softmax,iteration,network_name, boundary_min, boundary_max, epsilon,alpha,images, pop_size, im_shape, im_size, target_class, or_class, ancestor)
 
 # save results	
-file_save = results_path+"/EA/{}/attack/{}/".format(network_name,name)
-np.save(file_save+"image.npy", res[0])
-np.save(file_save+"or_softmax.npy", or_softmax)
-np.save(file_save+"target_softmax.npy", target_softmax)
-np.save(file_save+"generations.npy", iteration)
-np.save(file_save+"time.npy", duration)
+file_save = "/home/users/rchitic/tvs/results/EA/{}/attack/{}/".format(network_name,name)
+np.save(file_save+"image{}.npy".format(order), res[0])
+np.save(file_save+"or_softmax{}.npy".format(order), or_softmax)
+np.save(file_save+"target_softmax{}.npy".format(order), target_softmax)
+np.save(file_save+"generations{}.npy".format(order), iteration)
+np.save(file_save+"time{}.npy".format(order), duration)
