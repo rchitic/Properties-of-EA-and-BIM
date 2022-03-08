@@ -52,10 +52,11 @@ for attack_type in attack_types:
 		print(f"Name {name}")
 		start = time.time()
 		# Get ancestor image
-		ancestor = cv2.imread(data_path+'\\imagenet_{}\\{}\\{}.jpg'.format(name,name,name)) #BGR image
+
+		ancestor = cv2.imread(data_path.format(name,name,str(order))) #BGR image
 		ancestor = cv2.resize(ancestor,(224,224))[:,:,::-1] #RGB image
 		ancestor = ancestor.astype(np.uint8)
-    
+
 		for i,model in enumerate(m):
 			network = networks[i]
 			print(f"{network}")
