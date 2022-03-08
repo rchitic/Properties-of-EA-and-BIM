@@ -33,27 +33,17 @@ torch.backends.cudnn.deterministic = True
 networks = params.networks
 class_dict = params.class_dict
 names = params.names
+alpha = params.alpha
+eps = params.epsilon
+N = params.N
 data_path = params.data_path
 results_path = params.results_path
 
-vgg16 = create_torchmodel('VGG16')
-vgg19 = create_torchmodel('VGG19')
-resnet50 = create_torchmodel('ResNet50')
-resnet101 = create_torchmodel('ResNet101')
-resnet152 = create_torchmodel('ResNet152')
-densenet121 = create_torchmodel('DenseNet121')
-densenet169 = create_torchmodel('DenseNet169')
-densenet201 = create_torchmodel('DenseNet201')
-mobilenet = create_torchmodel('MobileNet')
-mnasnet = create_torchmodel('MNASNet')
-bagnet9 = create_torchmodel('BagNet9')
-bagnet17 = create_torchmodel('BagNet17')
-bagnet33 = create_torchmodel('BagNet33')
-resnet50_SIN = create_torchmodel('ResNet50_SIN')
+m = []
+for network in networks:
+	m.append(create_torchmodel(network))
 
-m = [vgg16,vgg19,resnet50,resnet101,resnet152,densenet121,densenet169,densenet201,mobilenet,mnasnet,bagnet9,bagnet17,bagnet33,resnet50_SIN]
-
-attack_types = ['BIM']#'PGD','FGSM','CW'
+attack_types = ['BIM']
 
 # Main
 #---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -70,14 +60,7 @@ for attack_type in attack_types:
 			network = networks[i]
 			print(f"{network}")
 			# Set attack parameters
-			if attack_type == 'BIM':
-				atk = torchattacks.BIM(model, eps=8/255, alpha=2/255, steps=7)
-			if attack_type == 'CW':
-				atk = torchattacks.CW(model, c=1, kappa=0, steps=1000, lr=0.01)
-			if attack_type == 'FGSM':
-				atk = torchattacks.FGSM(model, eps=8/255)
-			if attack_type == 'PGD':
-				atk = torchattacks.PGD(model, eps=8/255, alpha=2/255, steps=7)
+			atk = torchattacks.BIM(model, eps=epsilon, alpha=alpha, steps=N)
 
 			preprocessed_image = prediction_preprocess(Image.fromarray(ancestor))
 			target_map_function = lambda preprocessed_image, labels: labels.fill_(class_dict[name][1])
