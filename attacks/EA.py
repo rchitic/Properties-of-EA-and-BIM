@@ -202,6 +202,7 @@ target_class = class_dict[name][1]
 print(f"Network {network_name} image {name} order {order}")
 
 data_path = params.data_path
+results_path = params.results_path
 ancestor = cv2.imread(data_path.format(name,name,str(order))) #BGR image
 ancestor = cv2.resize(ancestor,(224,224))[:,:,::-1] #RGB image
 ancestor = ancestor.astype(np.uint8)
@@ -228,7 +229,7 @@ f.close()
 res, or_softmax, target_softmax, iteration, duration = workflow(or_softmax,target_softmax,iteration,network_name, boundary_min, boundary_max, epsilon,alpha,images, pop_size, im_shape, im_size, target_class, or_class, ancestor)
 
 # save results	
-file_save = "/home/users/rchitic/tvs/results/EA/{}/attack/{}/".format(network_name,name)
+file_save = results_path + "/EA/{}/attack/{}/".format(network_name,name)
 np.save(file_save+"image{}.npy".format(order), res[0])
 np.save(file_save+"or_softmax{}.npy".format(order), or_softmax)
 np.save(file_save+"target_softmax{}.npy".format(order), target_softmax)
