@@ -41,22 +41,9 @@ names = params.names
 data_path = params.data_path
 results_path = params.results_path
 
-resnet50_SIN = create_torchmodel_SIN('ResNet50_SIN')
-vgg16 = create_torchmodel('VGG16')
-vgg19 = create_torchmodel('VGG19')
-resnet50 = create_torchmodel('ResNet50')
-resnet101 = create_torchmodel('ResNet101')
-resnet152 = create_torchmodel('ResNet152')
-densenet121 = create_torchmodel('DenseNet121')
-densenet169 = create_torchmodel('DenseNet169')
-densenet201 = create_torchmodel('DenseNet201')
-mobilenet = create_torchmodel('MobileNet')
-mnasnet = create_torchmodel('MNASNet')
-bagnet9 = create_torchmodel('BagNet9')
-bagnet17 = create_torchmodel('BagNet17')
-bagnet33 = create_torchmodel('BagNet33')
-
-m = [vgg16,vgg19,resnet50,resnet101,resnet152,densenet121,densenet169,densenet201,mobilenet,mnasnet]
+m=[]
+for network in networks:
+	m.append(create_torchmodel(network))
 
 activations_allImages = {}
 image_type = sys.argv[1] #EA or BIM
@@ -107,10 +94,10 @@ def get_activation_adversarial(name,object_name,network):
 def get_activation_ancestors():
 	for object_name in names:
 		activations_perImage = {}
-		ancestor = cv2.imread('/home/users/rchitic/tvs/data/imagenet_{}/{}/{}.jpg'.format(object_name,object_name,object_name)) #BGR image
+		ancestor = cv2.imread(data_path.format(name,name,str(order))) #BGR image
 		ancestor = cv2.resize(ancestor,(224,224))[:,:,::-1] #RGB image
-		ancestor = ancestor.astype(int)
-		ancestor = prediction_preprocess(Image.fromarray(ancestor.astype(np.uint8))).to('cuda')
+		ancestor = ancestor.astype(np.uint8)
+		ancestor = prediction_preprocess(Image.fromarray(ancestor)).to.cuda()
 
 		for i, model in enumerate(m):
 			network = networks[i]
@@ -125,7 +112,7 @@ def get_activation_ancestors():
 			activations_perImage[network] = activation
 		activations_allImages[object_name] = activations_perImage
 
-	with open("/home/users/rchitic/tvs/results/EA/activations_total_ancestor.pickle", "wb") as dict_file:
+	with open(results_path+"/EA/activations_total_ancestor.pickle", "wb") as dict_file:
 		pickle.dump(activations_allImages, dict_file)
 	dict_file.close()
 	return activations_allImages
