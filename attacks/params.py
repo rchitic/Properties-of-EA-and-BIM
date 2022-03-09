@@ -13,3 +13,4 @@ G = 103000
 N = 5
 
 #data_path = '.../data/{}/{}{}.JPEG' (e.g. '.../data/{abacus/abacus1.JPEG')
+#results_path = '...' (e.g. for 'results_path/EA/...' or 'results_path/BIM/...')
