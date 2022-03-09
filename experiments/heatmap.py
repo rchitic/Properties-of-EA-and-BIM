@@ -38,6 +38,7 @@ results_path = params.results_path
 #------------------------------------------------------------------------------------------------------------------------------
 norm_layer = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
+# function taken from https://github.com/wielandbrendel/bag-of-local-features-models
 def generate_heatmap_pytorch(model, image, target_class, or_class, patchsize):
     """
     Generates high-resolution heatmap for a BagNet by decomposing the
@@ -99,15 +100,6 @@ def generate_heatmap_pytorch(model, image, target_class, or_class, patchsize):
         print('done ', str(patchsize))
         return target, or_
 
-# Get images
-SIN = False
-if SIN:
-	networks = ['ResNet50_SIN']
-else:
-	networks = ['VGG16','VGG19','ResNet50','ResNet101','ResNet152','DenseNet121','DenseNet169','DenseNet201','MobileNet','MNASNet']
-class_dict = {'abacus':[398,641],'acorn':[988,947],'baseball':[429,541],'brown_bear':[294,150],'broom':[462,472],'canoe':[472,703],'hippopotamus':[344,368],'llama':[355,340],'maraca':[641,624],'mountain_bike':[671,752]}
-names = list(class_dict.keys())
-
 # Define BagNet models
 bagnet9 = create_torchmodel('BagNet9_simple')
 bagnet17 = create_torchmodel('BagNet17_simple')
@@ -117,48 +109,49 @@ compute_adv = True
 if not compute_adv:
 	networks=['']
 
-attack_type = "EA"
+attack_type = "EA" #'EA' or 'BIM
 
 for network in networks:
 	for name in names:
-		print(network,name)
 		or_class = class_dict[name][0]
 		target_class = class_dict[name][1]
-		
-		# Get ancestor and adversarial images
-		ancestor = cv2.imread(data_path+'/imagenet_{}/{}/{}.jpg'.format(name,name,name)) #BGR image
-		ancestor = cv2.resize(ancestor,(224,224))[:,:,::-1] #RGB image
-		ancestor = ancestor.astype(np.uint8)
-		ancestor = prediction_preprocess(ancestor)
-		results_loc = results_path+"/{}".format(attack_type)
+		for order in range(1,11):
+			print(network,name,order)
+
+			# Get ancestor and adversarial images
+			ancestor = cv2.imread(data_path.format(name,name,str(order))) #BGR image
+			ancestor = cv2.resize(ancestor,(224,224))[:,:,::-1] #RGB image
+			ancestor = ancestor.astype(np.uint8)
+			ancestor = prediction_preprocess(Image.fromarray(ancestor)).cpu().detach().numpy()
+			results_loc = results_path+"/{}".format(attack_type)
 				
-		if compute_adv: 
-			adv = np.load(results_loc + "/{}/attack/{}/image.npy".format(network,name))
+			if compute_adv: 
+				adv = np.load(results_loc + "/{}/attack/{}/image{}.npy".format(network,name,order))
 
-			# Get c_a & c_t heatmaps of adversarial images with BagNet9, BagNet17, BagNet33
-			t_heatmap_9, o_heatmap_9 = generate_heatmap_pytorch(bagnet9, adv.reshape(1,3,224,224), target_class, or_class, 9)
-			np.save(results_loc + "/{}/heatmap/BagNet9/{}/original.npy".format(network,name),o_heatmap_9)
-			np.save(results_loc + "/{}/heatmap/BagNet9/{}/target.npy".format(network,name),t_heatmap_9)
+				# Get c_a & c_t heatmaps of adversarial images with BagNet9, BagNet17, BagNet33
+				t_heatmap_9, o_heatmap_9 = generate_heatmap_pytorch(bagnet9, adv.reshape(1,3,224,224), target_class, or_class, 9)
+				np.save(results_loc + "/{}/heatmap/BagNet9/{}/original{}.npy".format(network,name,order),o_heatmap_9)
+				np.save(results_loc + "/{}/heatmap/BagNet9/{}/target{}.npy".format(network,name,order),t_heatmap_9)
 
-			t_heatmap_17, o_heatmap_17 = generate_heatmap_pytorch(bagnet17, adv.reshape(1,3,224,224), target_class, or_class, 17)
-			np.save(results_loc + "/{}/heatmap/BagNet17/{}/original.npy".format(network,name),o_heatmap_17)
-			np.save(results_loc + "/{}/heatmap/BagNet17/{}/target.npy".format(network,name),t_heatmap_17)
+				t_heatmap_17, o_heatmap_17 = generate_heatmap_pytorch(bagnet17, adv.reshape(1,3,224,224), target_class, or_class, 17)
+				np.save(results_loc + "/{}/heatmap/BagNet17/{}/original{}.npy".format(network,name,order),o_heatmap_17)
+				np.save(results_loc + "/{}/heatmap/BagNet17/{}/target{}.npy".format(network,name,order),t_heatmap_17)
 		
-			t_heatmap_33, o_heatmap_33 = generate_heatmap_pytorch(bagnet33, adv.reshape(1,3,224,224), target_class, or_class, 33)
-			np.save(results_loc + "/{}/heatmap/BagNet33/{}/original.npy".format(network,name),o_heatmap_33)
-			np.save(results_loc + "/{}/heatmap/BagNet33/{}/target.npy".format(network,name),t_heatmap_33)
+				t_heatmap_33, o_heatmap_33 = generate_heatmap_pytorch(bagnet33, adv.reshape(1,3,224,224), target_class, or_class, 33)
+				np.save(results_loc + "/{}/heatmap/BagNet33/{}/original{}.npy".format(network,name,order),o_heatmap_33)
+				np.save(results_loc + "/{}/heatmap/BagNet33/{}/target{}.npy".format(network,name,order),t_heatmap_33)
 
-		else:
-			# Get c_a & c_t heatmaps of ancestor images with BagNet9, BagNet17, BagNet33
-			t_heatmap_9, o_heatmap_9 = generate_heatmap_pytorch(bagnet9, ancestor.reshape(1,3,224,224), target_class, or_class, 9)
-			np.save(results_loc + "/heatmap_BagNet9/{}/original.npy".format(name),o_heatmap_9)
-			np.save(results_loc + "/heatmap_BagNet9/{}/target.npy".format(name),t_heatmap_9)
+			else:
+				# Get c_a & c_t heatmaps of ancestor images with BagNet9, BagNet17, BagNet33
+				t_heatmap_9, o_heatmap_9 = generate_heatmap_pytorch(bagnet9, ancestor.reshape(1,3,224,224), target_class, or_class, 9)
+				np.save(results_loc + "/heatmap_BagNet9/{}/original{}.npy".format(name,order),o_heatmap_9)
+				np.save(results_loc + "/heatmap_BagNet9/{}/target{}.npy".format(name,order),t_heatmap_9)
 
-			t_heatmap_17, o_heatmap_17 = generate_heatmap_pytorch(bagnet17, ancestor.reshape(1,3,224,224), target_class, or_class, 17)
-			np.save(results_loc + "/heatmap_BagNet17/{}/original.npy".format(name),o_heatmap_17)
-			np.save(results_loc + "/heatmap_BagNet17/{}/target.npy".format(name),t_heatmap_17)
+				t_heatmap_17, o_heatmap_17 = generate_heatmap_pytorch(bagnet17, ancestor.reshape(1,3,224,224), target_class, or_class, 17)
+				np.save(results_loc + "/heatmap_BagNet17/{}/original{}.npy".format(name,order),o_heatmap_17)
+				np.save(results_loc + "/heatmap_BagNet17/{}/target{}.npy".format(name,order),t_heatmap_17)
 		
-			t_heatmap_33, o_heatmap_33 = generate_heatmap_pytorch(bagnet33, ancestor.reshape(1,3,224,224), target_class, or_class, 33)
-			np.save(results_loc + "/heatmap_BagNet33/{}/original.npy".format(name),o_heatmap_33)
-			np.save(results_loc + "/heatmap_BagNet33/{}/target.npy".format(name),t_heatmap_33)
+				t_heatmap_33, o_heatmap_33 = generate_heatmap_pytorch(bagnet33, ancestor.reshape(1,3,224,224), target_class, or_class, 33)
+				np.save(results_loc + "/heatmap_BagNet33/{}/original{}.npy".format(name,order),o_heatmap_33)
+				np.save(results_loc + "/heatmap_BagNet33/{}/target{}.npy".format(name,order),t_heatmap_33)
 
