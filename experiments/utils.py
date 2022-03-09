@@ -25,13 +25,6 @@ def _01(im):
     _01 = (im-min_im)/(max_im-min_im)
     return _01 
 
-def rescale_linear(array, new_min, new_max):
-    """Rescale an arrary linearly."""
-    minimum, maximum = np.min(array), np.max(array)
-    m = (new_max - new_min) / (maximum - minimum)
-    b = new_min - m * minimum
-    return m * array + b
-
 prediction_preprocess = transforms.Compose([
     transforms.ToTensor(), # ToTensor : [0, 255] -> [0, 1], (224,224,3) -> (3,224,224)   
 ])
@@ -210,44 +203,6 @@ model_urls = {
              'bagnet17': 'https://bitbucket.org/wielandbrendel/bag-of-feature-pretrained-models/raw/d413271344758455ac086992beb579e256447839/bagnet16.h5',
              'bagnet33': 'https://bitbucket.org/wielandbrendel/bag-of-feature-pretrained-models/raw/d413271344758455ac086992beb579e256447839/bagnet32.h5',
              }
-
-def bagnet9():
-	model_path = keras.utils.get_file(
-	                'bagnet8.h5',
-	                model_urls['bagnet9'],
-	                cache_subdir='models',
-	                file_hash='5b70adc7c4ff77d932dbba485a5ea1d333a65e777a45511010f22e304a2fdd69')
-
-	return load_model(model_path)
-
-def bagnet17():
-	model_path = keras.utils.get_file(
-	                'bagnet16.h5',
-	                model_urls['bagnet17'],
-	                cache_subdir='models',
-	                file_hash='b262dfee15a86c91e6aa21bfd86505ecd20a539f7f7c72439d5b1d352dd98a1d')
-
-	return load_model(model_path)
-
-def bagnet33(pretrained=True, strides=[2, 2, 2, 1], **kwargs):
-    """Constructs a Bagnet-33 model.
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    model = BagNet(Bottleneck, [3, 4, 6, 3], strides=strides, kernel3=[1,1,1,1], **kwargs)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['bagnet33'], map_location = 'cpu'))
-    return model
-
-#pytorch
-import torch.nn as nn
-import math
-import torch
-from collections import OrderedDict
-from torch.utils import model_zoo
-
-import os 
-#dir_path = os.path.dirname(os.path.realpath(__file__))
 
 __all__ = ['bagnet9', 'bagnet17', 'bagnet33']
 
