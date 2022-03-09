@@ -19,9 +19,10 @@ import cv2
 
 # torch
 import torch
-
-# own
-import params
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+print(torch.rand(1, device="cuda"))
+torch.cuda.empty_cache()
+from torchvision import transforms
 from utils import create_torchmodel, softmax, prediction_preprocess
 
 # gpu
@@ -51,27 +52,12 @@ def add_patch(network_name,padded_orig,padded_adv,patch_id):
 networks = params.networks
 class_dict = params.class_dict
 names = params.names
+attack_name = 'EA'
 data_path = params.data_path
 results_path = params.results_path
-
-SIN = False
-if SIN:
-	networks = ['ResNet50_SIN']
-	resnet50_SIN = create_torchmodel('ResNet50_SIN')
-	m = [resnet50_SIN]
-else:
-	networks = ['VGG16','VGG19','ResNet50','ResNet101','ResNet152','DenseNet121','DenseNet169','DenseNet201','MobileNet','MNASNet']
-	vgg16 = create_torchmodel('VGG16')
-	vgg19 = create_torchmodel('VGG19')
-	resnet50 = create_torchmodel('ResNet50')
-	resnet101 = create_torchmodel('ResNet101')
-	resnet152 = create_torchmodel('ResNet152')
-	densenet121 = create_torchmodel('DenseNet121')
-	densenet169 = create_torchmodel('DenseNet169')
-	densenet201 = create_torchmodel('DenseNet201')
-	mobilenet = create_torchmodel('MobileNet')
-	mnasnet = create_torchmodel('MNASNet')
-	m = [vgg16,vgg19,resnet50,resnet101,resnet152,densenet121,densenet169,densenet201,mobilenet,mnasnet]
+m=[]
+for network in networks:
+	m.append(create_torchmodel(network))
 
 attack_name = 'EA'
 
@@ -79,48 +65,50 @@ attack_name = 'EA'
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 for i,model in enumerate(m):
 	network = networks[i]
-	for patch_size in [9,17,33]:
+	for patch_size in [17]:
 		half = int(patch_size/2)
 		for name in names:
-			print(network,patch_size,name)
-			p_orig = []
-			p_target = []
-			or_class = class_dict[name][0]
-			target_class = class_dict[name][1]
+			for order in range(1,11):
+				print(network,patch_size,name)
+				p_orig = []
+				p_target = []
+				or_class = class_dict[name][0]
+				target_class = class_dict[name][1]
 
-			# Get ancestor and adversarial images
-			ancestor = cv2.imread('/home/users/rchitic/tvs/data/imagenet_{}/{}/{}.jpg'.format(name,name,name)) #BGR image
-			ancestor = cv2.resize(ancestor,(224,224))[:,:,::-1] #RGB image
-			ancestor = ancestor.astype(np.uint8)
-			ancestor = prediction_preprocess(Image.fromarray(ancestor)).cpu().detach().numpy()
+				# Get ancestor and adversarial images
+				ancestor = cv2.imread(data_path.format(name,name,str(order))) #BGR image
+				ancestor = cv2.resize(ancestor,(224,224))[:,:,::-1] #RGB image
+				ancestor = ancestor.astype(np.uint8)
+				ancestor = prediction_preprocess(Image.fromarray(ancestor)).cpu().detach().numpy()
 
-			filename_load = results_path + "/{}/{}/attack/{}/image.npy".format(attack_name,network,name)
-			adv = np.load(filename_load)
+				filename = results_loc + "/{}/{}/attack/{}/image{}.npy".format(attack_name,network,name,order)
+				if os.path.exists(filename):			
+					adv = np.load(filename)
 
-			# Pad images
-			c, x, y = adv.shape
-			padded_adv = np.zeros((c,x+patch_size-1,y+patch_size-1))
-			padded_adv[:,half:half+x,half:half+y] = adv
-			padded_adv = padded_adv.astype(np.float32)
+					# Pad images
+					c, x, y = adv.shape
+					padded_adv = np.zeros((c,x+patch_size-1,y+patch_size-1))
+					padded_adv[:,half:half+x,half:half+y] = adv
+					padded_adv = padded_adv.astype(np.float32)
 
-			c, x, y = ancestor.shape
-			padded_ancestor = np.zeros((c,x+patch_size-1, y+patch_size-1))
-			padded_ancestor[:,half:half+x,half:half+y] = ancestor
-			padded_ancestor = padded_ancestor.astype(np.float32)
+					c, x, y = ancestor.shape
+					padded_ancestor = np.zeros((c,x+patch_size-1, y+patch_size-1))
+					padded_ancestor[:,half:half+x,half:half+y] = ancestor
+					padded_ancestor = padded_ancestor.astype(np.float32)
 
-			for patch_id in range(50176):
-				# Add patch
-				patched = add_patch(network,padded_ancestor,padded_adv,patch_id)
+					for patch_id in range(50176):
+						# Add patch
+						patched = add_patch(network,padded_ancestor,padded_adv,patch_id)
 
-				# predict using pre-trained network
-				pred = run_network(model,patched[:,half:half+224,half:half+224])
+						# predict using pre-trained network
+						pred = run_network(model,patched[:,half:half+224,half:half+224])
 
-				# save c_a & c_t probs
-				p_orig.append(pred[0,or_class])
-				p_target.append(pred[0,target_class])
+						# save c_a & c_t probs
+						p_orig.append(pred[0,or_class])
+						p_target.append(pred[0,target_class])
 
-			# save results
-			filename_save_orig = results_path + "/{}/{}/patch_replacement_overlapping/patch_size{}/{}/orig.npy".format(attack_name,network,patch_size,name)
-			filename_save_target = results_path + "/{}/{}/patch_replacement_overlapping/patch_size{}/{}/target.npy".format(attack_name,network,patch_size,name)
-			np.save(filename_save_orig,p_orig)
-			np.save(filename_save_target,p_target)
+					# save results
+					filename_save_orig = results_loc + "/{}/{}/patch_replacement_overlapping/patch_size{}/{}/orig{}.npy".format(attack_name,network,patch_size,name,order)
+					filename_save_target = results_loc + "/{}/{}/patch_replacement_overlapping/patch_size{}/{}/target{}.npy".format(attack_name,network,patch_size,name,order)
+					np.save(filename_save_orig,p_orig)
+					np.save(filename_save_target,p_target)
