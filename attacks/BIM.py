@@ -49,28 +49,29 @@ attack_types = ['BIM']
 #---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 for attack_type in attack_types:
 	for name in names:
-		print(f"Name {name}")
-		start = time.time()
-		# Get ancestor image
+		for order in range(1,11):
+			print(f"Name {name} Order {order}")
+			start = time.time()
+			
+			# Get ancestor image
+			ancestor = cv2.imread(data_path.format(name,name,str(order))) #BGR image
+			ancestor = cv2.resize(ancestor,(224,224))[:,:,::-1] #RGB image
+			ancestor = ancestor.astype(np.uint8)
 
-		ancestor = cv2.imread(data_path.format(name,name,str(order))) #BGR image
-		ancestor = cv2.resize(ancestor,(224,224))[:,:,::-1] #RGB image
-		ancestor = ancestor.astype(np.uint8)
+			for i,model in enumerate(m):
+				network = networks[i]
+				print(f"{network}")
+				# Set attack parameters
+				atk = torchattacks.BIM(model, eps=epsilon, alpha=alpha, steps=N)
 
-		for i,model in enumerate(m):
-			network = networks[i]
-			print(f"{network}")
-			# Set attack parameters
-			atk = torchattacks.BIM(model, eps=epsilon, alpha=alpha, steps=N)
+				preprocessed_image = prediction_preprocess(Image.fromarray(ancestor))
+				target_map_function = lambda preprocessed_image, labels: labels.fill_(class_dict[name][1])
+				atk.set_mode_targeted(target_map_function=target_map_function)
 
-			preprocessed_image = prediction_preprocess(Image.fromarray(ancestor))
-			target_map_function = lambda preprocessed_image, labels: labels.fill_(class_dict[name][1])
-			atk.set_mode_targeted(target_map_function=target_map_function)
-
-			# Create and save adversarial image
-			adv_image = atk(preprocessed_image, torch.tensor([4]))
-			total_time = time.time()-start
-			numpy_adv_image = adv_image.cpu().detach().numpy()
-			np.save(results_path + '/{}/{}/attack/{}/image.npy'.format(attack_type,network,name),numpy_adv_image)
-			np.save(resuls_path + '/{}/{}/attack/{}/time.npy'.format(attack_type,network,name),total_time)
+				# Create and save adversarial image
+				adv_image = atk(preprocessed_image, torch.tensor([4]))
+				total_time = time.time()-start
+				numpy_adv_image = adv_image.cpu().detach().numpy()
+				np.save(results_path + '/{}/{}/attack/{}/image{}.npy'.format(attack_type,network,name,order),numpy_adv_image)
+				np.save(resuls_path + '/{}/{}/attack/{}/time{}.npy'.format(attack_type,network,name,order),total_time)
 
