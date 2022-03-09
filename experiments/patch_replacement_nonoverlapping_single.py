@@ -19,9 +19,10 @@ import cv2
 
 # torch
 import torch
-
-# own
-import params
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+print(torch.rand(1, device="cuda"))
+torch.cuda.empty_cache()
+from torchvision import transforms
 from utils import create_torchmodel, softmax, prediction_preprocess
 
 # gpu
@@ -51,30 +52,13 @@ def add_patch(network_name,orig,adv,patch_id,comb):
 networks = params.networks
 class_dict = params.class_dict
 names = params.names
+attack_name = 'EA'
 data_path = params.data_path
 results_path = params.results_path
-
-SIN = False
-if SIN:
-	networks = ['ResNet50_SIN']
-	resnet50_SIN = create_torchmodel('ResNet50_SIN')
-	m = [resnet50_SIN]
-else:
-	networks = ['VGG16','VGG19','ResNet50','ResNet101','ResNet152','DenseNet121','DenseNet169','DenseNet201','MobileNet','MNASNet']
-	vgg16 = create_torchmodel('VGG16')
-	vgg19 = create_torchmodel('VGG19')
-	resnet50 = create_torchmodel('ResNet50')
-	resnet101 = create_torchmodel('ResNet101')
-	resnet152 = create_torchmodel('ResNet152')
-	densenet121 = create_torchmodel('DenseNet121')
-	densenet169 = create_torchmodel('DenseNet169')
-	densenet201 = create_torchmodel('DenseNet201')
-	mobilenet = create_torchmodel('MobileNet')
-	mnasnet = create_torchmodel('MNASNet')
-	m = [vgg16,vgg19,resnet50,resnet101,resnet152,densenet121,densenet169,densenet201,mobilenet,mnasnet]
-
-attack_name = 'EA'
-
+m=[]
+for network in networks:
+	m.append(create_torchmodel(network))
+	
 # Main
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 for i,model in enumerate(m):
@@ -82,36 +66,40 @@ for i,model in enumerate(m):
 
 	for patch_size in [8,16,32,56,112]:
 		half = int(patch_size/2)
-		comb = np.load(base_path+"code/patch_replacement_combs/patch_size"+str(patch_size)+".npy")
+		comb = np.load(data_path+"/combs/patch_size"+str(patch_size)+".npy")
 
-		for name in names:
-			print(network,name,patch_size)
-			or_class = class_dict[name][0]
-			target_class = class_dict[name][1]
-			p_orig = []
-			p_target = []
+		for name in names[3:4]:
+			for order in range(1,11):
 
-			# Get original and adversarial images
-			ancestor = cv2.imread('/home/users/rchitic/tvs/data/imagenet_{}/{}/{}.jpg'.format(name,name,name)) #BGR image
-			ancestor = cv2.resize(ancestor,(224,224))[:,:,::-1] #RGB image
-			ancestor = ancestor.astype(np.uint8)
-			ancestor = prediction_preprocess(Image.fromarray(ancestor)).cpu().detach().numpy()
-			filename_load = results_path + "/{}/{}/attack/{}/image.npy".format(attack_name,network,name)
-			adv = np.load(filename_load)
+				print(network,name,patch_size)
+				or_class = class_dict[name][0]
+				target_class = class_dict[name][1]
+				p_orig = []
+				p_target = []
 
-			for patch_id in range(len(comb)):
-				# Add patch
-				patched = add_patch(network,ancestor,adv,patch_id,comb)
+				# Get original and adversarial images
+				ancestor = cv2.imread(data_path.format(name,name,str(order))) #BGR image
+				ancestor = cv2.resize(ancestor,(224,224))[:,:,::-1] #RGB image
+				ancestor = ancestor.astype(np.uint8)
+				ancestor = prediction_preprocess(Image.fromarray(ancestor)).cpu().detach().numpy()
+				results_loc = base_path + "results"
+				filename = results_loc + "/{}/{}/attack/{}/image{}.npy".format(attack_name,network,name,str(order))
+				if os.path.exists(filename):
+					adv = np.load(filename)
 
-				# predict using pre-trained network
-				pred = run_network(model,patched.copy())
+					for patch_id in range(len(comb)):
+						# Add patch
+						patched = add_patch(network,ancestor,adv,patch_id,comb)
 
-				# save c_a & c_t probs		
-				p_orig.append(pred[0,or_class])
-				p_target.append(pred[0,target_class])
+						# predict using pre-trained network
+						pred = run_network(model,patched.copy())
 
-			# save results
-			filename_save_orig = results_path + "/{}/{}/patch_replacement_nonoverlapping_single/patch_size{}/{}/orig.npy".format(attack_name,network,patch_size,name)
-			filename_save_target = results_path + "/{}/{}/patch_replacement_nonoverlapping_single/patch_size{}/{}/target.npy".format(attack_name,network,patch_size,name)
-			np.save(filename_save_orig,p_orig)
-			np.save(filename_save_target,p_target)
+						# save c_a & c_t probs		
+						p_orig.append(pred[0,or_class])
+						p_target.append(pred[0,target_class])
+
+					# save results
+					filename_save_orig = results_loc + "/{}/{}/patch_replacement_nonoverlapping_single/patch_size{}/{}/orig{}.npy".format(attack_name,network,patch_size,name,order)
+					filename_save_target = results_loc + "/{}/{}/patch_replacement_nonoverlapping_single/patch_size{}/{}/target{}.npy".format(attack_name,network,patch_size,name,order)
+					np.save(filename_save_orig,p_orig)
+					np.save(filename_save_target,p_target)
