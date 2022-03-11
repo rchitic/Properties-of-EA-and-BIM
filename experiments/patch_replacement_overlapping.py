@@ -52,7 +52,6 @@ def add_patch(network_name,padded_orig,padded_adv,patch_id):
 networks = params.networks
 class_dict = params.class_dict
 names = params.names
-attack_name = 'EA'
 data_path = params.data_path
 results_path = params.results_path
 m=[]
@@ -81,7 +80,7 @@ for i,model in enumerate(m):
 				ancestor = ancestor.astype(np.uint8)
 				ancestor = prediction_preprocess(Image.fromarray(ancestor)).cpu().detach().numpy()
 
-				filename = results_loc + "/{}/{}/attack/{}/image{}.npy".format(attack_name,network,name,order)
+				filename = results_path + "/{}/{}/attack/{}/image{}.npy".format(attack_name,network,name,order)
 				if os.path.exists(filename):			
 					adv = np.load(filename)
 
@@ -108,7 +107,7 @@ for i,model in enumerate(m):
 						p_target.append(pred[0,target_class])
 
 					# save results
-					filename_save_orig = results_loc + "/{}/{}/patch_replacement_overlapping/patch_size{}/{}/orig{}.npy".format(attack_name,network,patch_size,name,order)
-					filename_save_target = results_loc + "/{}/{}/patch_replacement_overlapping/patch_size{}/{}/target{}.npy".format(attack_name,network,patch_size,name,order)
+					filename_save_orig = results_path + "/{}/{}/patch_replacement_overlapping/patch_size{}/{}/orig{}.npy".format(attack_name,network,patch_size,name,order)
+					filename_save_target = results_path + "/{}/{}/patch_replacement_overlapping/patch_size{}/{}/target{}.npy".format(attack_name,network,patch_size,name,order)
 					np.save(filename_save_orig,p_orig)
 					np.save(filename_save_target,p_target)
