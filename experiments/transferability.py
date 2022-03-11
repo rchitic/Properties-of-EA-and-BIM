@@ -1,13 +1,10 @@
+'''
+Send one CNN's adversarial image to another CNN and check if the other CNN is also fooled
+'''
 import os
-import time
 import random
-#from skimage.metrics import structural_similarity as ssim
-import math
 import sys
-import cProfile
 import numpy as np
-import tensorflow as tf
-from tensorflow import keras
 import torch
 import random
 from random import shuffle
@@ -15,13 +12,7 @@ import cv2
 from PIL import Image
 
 import torch
-import torch.nn as nn
-import torch.optim as optim
-
-import torchvision.utils
 from torchvision import models
-import torchvision.datasets as dsets
-import torchvision.transforms as transforms
 
 from utils import create_torchmodel, softmax, prediction_preprocess
 
@@ -58,12 +49,12 @@ for id_, network in enumerate(list(set(networks)-set([target_CNN_name]))):
 			target_class = class_dict[name][1]
 			pred_class = target_class
 
-			if os.path.exists(results_loc + '/{}/attack/{}/image{}.npy'.format(network,name,order)):
+			if os.path.exists(results_path + '/{}/{}/attack/{}/image{}.npy'.format(attack_type,network,name,order)):
 				if shuffled:
-					im = np.load(results_loc+"/{}/{}/shuffle_network/{}/{}/images/adv_network{}.npy".format(attack_type,network,s,name,str(order)))
-					ancestor = np.load(results_loc+"/{}/{}/shuffle_network/{}/{}/images/ancestor{}.npy".format(attack_type,network,s,name,str(order)))
+					im = np.load(results_path+"/{}/{}/shuffle_network/{}/{}/images/adv_network{}.npy".format(attack_type,network,s,name,str(order)))
+					ancestor = np.load(results_path+"/{}/{}/shuffle_network/{}/{}/images/ancestor{}.npy".format(attack_type,network,s,name,str(order)))
 				else:
-					im = torch.from_numpy(np.load(results_loc+"/{}/{}/attack/{}/image{}.npy".format(attack_type,network,name,order))).float().to('cuda')			
+					im = torch.from_numpy(np.load(results_path+"/{}/{}/attack/{}/image{}.npy".format(attack_type,network,name,order))).float().to('cuda')			
 					ancestor = cv2.imread(data_path.format(name,name,str(order))) #BGR image
 					ancestor = cv2.resize(ancestor,(224,224))[:,:,::-1] #RGB image
 					ancestor = ancestor.astype(np.uint8)
