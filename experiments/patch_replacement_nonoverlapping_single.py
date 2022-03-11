@@ -1,5 +1,5 @@
 '''
-Replace ancestor patches (non-overlapping) of size 8, 16, 32, 56 or 112 with patches from the adversarial images one at a time.
+Replace ancestor patches (non-overlapping) of size 16, 32, 56 or 112 with patches from the adversarial images one at a time.
 Check the behaviour of the CNNs when fed with all intermediary images. 
 '''
 
@@ -64,9 +64,9 @@ for network in networks:
 for i,model in enumerate(m):
 	network = networks[i]
 
-	for patch_size in [8,16,32,56,112]:
+	for patch_size in [16,32,56,112]:
 		half = int(patch_size/2)
-		comb = np.load(data_path+"/combs/patch_size"+str(patch_size)+".npy")
+		comb = np.load(data_path+"/patch_replacement_combs/patch_size"+str(patch_size)+".npy")
 
 		for name in names[3:4]:
 			for order in range(1,11):
