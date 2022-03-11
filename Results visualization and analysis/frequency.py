@@ -24,66 +24,59 @@ analysis_results_path = params.analysis_results_path
 def magnitude_spectra(attack_type,networks,diff):
     for network in networks:
         for name in names:
-            for channel in [0,1,2]:   
-                rgb_letter = rgb[channel]
-                print(network,name,rgb_letter)
-                path = results_path+'\\{}\\{}\\attack\\{}\\image.npy'
-                adv = np.load(path.format(attack_type,network,name))
-                ancestor = cv2.imread(data_path+'\\imagenet_{}\\{}\\{}.jpg'.format(name,name,name)) #BGR image
-                ancestor = cv2.resize(ancestor,(224,224))[:,:,::-1] #RGB image
-                ancestor = ancestor.astype(np.uint8)
+            for order in range(1,11):
+                for channel in [0,1,2]:   
+                    rgb_letter = rgb[channel]
+                    print(network,name,rgb_letter)
+                    path = results_path+'\\{}\\{}\\attack\\{}\\image.npy'
+                    adv = np.load(path.format(attack_type,network,name))
+	    			ancestor = cv2.imread(data_path.format(name,name,str(order))) #BGR image
+                    ancestor = cv2.resize(ancestor,(224,224))[:,:,::-1] #RGB image
+                    ancestor = ancestor.astype(np.uint8)
 
-                print(adv.shape)
-                ancestor = prediction_preprocess(Image.fromarray(ancestor))
-                ancestor = ancestor.cpu().detach().numpy()
-                if diff:
-                    calc = 'diff(magn)'
+                    print(adv.shape)
+                    ancestor = prediction_preprocess(Image.fromarray(ancestor))
+                    ancestor = ancestor.cpu().detach().numpy()
+                    if diff:
+                        calc = 'diff(magn)'
                         
-                    # |adv| - |ancestor|
-                    f_or = np.fft.fft2(ancestor[channel,:,:])
-                    fshiftor = np.fft.fftshift(f_or)
-                    magnitude_spectrumor = 20*np.log(np.abs(fshiftor))
-                    plt.imshow(magnitude_spectrumor, cmap = 'gray')
-                    #plt.show()
+                        # |adv| - |ancestor|
+                        f_or = np.fft.fft2(ancestor[channel,:,:])
+                        fshiftor = np.fft.fftshift(f_or)
+                        magnitude_spectrumor = 20*np.log(np.abs(fshiftor))
+                        plt.imshow(magnitude_spectrumor, cmap = 'gray')
+                        #plt.show()
 
-                    fadv = np.fft.fft2(adv[channel,:,:])
-                    fshiftadv = np.fft.fftshift(fadv)
-                    magnitude_spectrumadv = 20*np.log(np.abs(fshiftadv))
-                    plt.imshow(magnitude_spectrumadv, cmap = 'gray')
-                    #plt.show()
+                        fadv = np.fft.fft2(adv[channel,:,:])
+                        fshiftadv = np.fft.fftshift(fadv)
+                        magnitude_spectrumadv = 20*np.log(np.abs(fshiftadv))
+                        plt.imshow(magnitude_spectrumadv, cmap = 'gray')
                     
-                    plt.imshow(magnitude_spectrumadv-magnitude_spectrumor,cmap='bwr',interpolation='none')
-                    plt.title("{} attack, {} {} {} {}".format(attack_type,network,name,rgb_letter,calc))
-                    plt.colorbar()
-                    plt.savefig(analysis_results_path+"\\frequency\\{}\\{}\\{}_{}_diff(magn).png".format(attack_type,network,name,rgb_letter))
-                    plt.show()
+                        plt.imshow(magnitude_spectrumadv-magnitude_spectrumor,cmap='bwr',interpolation='none')
+                        plt.title("{} attack, {} {} {} {}".format(attack_type,network,name,rgb_letter,calc))
+                        plt.colorbar()
+                        plt.savefig(analysis_results_path+"\\frequency\\{}\\{}\\{}{}_{}_diff(magn).png".format(attack_type,network,name,order,rgb_letter))
+                        plt.show()
 
-                else:
-                    calc = 'magn(diff)'                        
+                    else:
+                        calc = 'magn(diff)'                        
                     
-                    # |adv-ancestor|
-                    f = np.fft.fft2(adv[channel,:,:]-ancestor[channel,:,:])
-                    fshift = np.fft.fftshift(f)
-                    magnitude_spectrum = 20*np.log(np.abs(fshift))
+                        # |adv-ancestor|
+                        f = np.fft.fft2(adv[channel,:,:]-ancestor[channel,:,:])
+                        fshift = np.fft.fftshift(f)
+                        magnitude_spectrum = 20*np.log(np.abs(fshift))
 
-                    plt.imshow(magnitude_spectrum,cmap='bwr',interpolation='none')
-                    plt.title("{} attack, {} {} {} {}".format(attack_type,network,name,rgb_letter,calc))
-                    plt.colorbar()
-                    plt.savefig(analysis_results_path+"\\frequency\\{}\\{}\\{}_{}_magn(diff).png".format(attack_type,network,name,rgb_letter))
-                    plt.show()
+                        plt.imshow(magnitude_spectrum,cmap='bwr',interpolation='none')
+                        plt.title("{} attack, {} {} {} {}".format(attack_type,network,name,rgb_letter,calc))
+                        plt.colorbar()
+                        plt.savefig(analysis_results_path+"\\frequency\\{}\\{}\\{}{}_{}_magn(diff).png".format(attack_type,network,name,order,rgb_letter))
+                        plt.show()
 
 # Filtering functions
 #--------------------------------------------------------------------------------------------------------------------------------------------------
 # Low-pass
 import math
 def low_pass_filtering(image, radius):
-    """
-         Low pass filter function
-         :param image: input image
-         :param radius: radius
-         :return: filtering result
-    """
-         # Fourier transform the image, fft is a three-dimensional array, fft[:, :, 0] is the real part, fft[:, :, 1] is the imaginary part
     fft = cv2.dft(np.float32(image), flags=cv2.DFT_COMPLEX_OUTPUT)
          # Centralize fft, the generated dshift is still a three-dimensional array
     dshift = np.fft.fftshift(fft)
@@ -230,15 +223,16 @@ def bandstop_filter(image, radius, w, n=1):
 def bandstop_graph(attack_type):
     for network in networks:
         model = create_torchmodel(network)
-        for name in names:      
-                print(network,name)
+        for name in names:  
+            for order in range(1,11):
+                print(network,name,order)
                 preds_ancestor_orclass,preds_ancestor_targetclass,preds_adv_orclass,preds_adv_targetclass = [],[],[],[]
-                path = results_path+'\\results\\{}\\{}\\attack\\{}\\image.npy'
+                path = results_path+'\\{}\\{}\\attack\\{}\\image{}.npy'
 
-                adv = np.load(path.format(attack_type,network,name))
+                adv = np.load(path.format(attack_type,network,name,order))
                 advnochange = copy.deepcopy(adv).astype('float32')
                 
-                or_ = cv2.imread('C:\\Users\\raluca.chitic\\Desktop\\PhD\\tvs\\data\\imagenet_{}\\{}\\{}.jpg'.format(name,name,name)) #BGR image
+				or_ = cv2.imread(data_path.format(name,name,str(order))) #BGR image
                 or_ = cv2.resize(or_,(224,224))[:,:,::-1] #RGB image
                 or_ = prediction_preprocess(Image.fromarray(or_.astype(np.uint8))).cpu().detach().numpy()
                 
@@ -250,7 +244,6 @@ def bandstop_graph(attack_type):
                     filtered_g = bandstop_filter(or_[1,:,:],radius,30,1)
                     filtered_b = bandstop_filter(or_[2,:,:],radius,30,1)
                     filtered = np.dstack((filtered_r,filtered_g,filtered_b))
-                    #np.save(analysis_results_path+"\\ancestors_frequency_bandstop\\{}\\{}\\{}\\{}.npy".format(attack_type,network,name,radius),filtered)
                     
                     # Get prediction of filtered image
                     with torch.no_grad():
@@ -266,7 +259,6 @@ def bandstop_graph(attack_type):
                     filtered_g = bandstop_filter(adv[1,:,:],radius,30,1)
                     filtered_b = bandstop_filter(adv[2,:,:],radius,30,1)
                     filtered = np.dstack((filtered_r,filtered_g,filtered_b))
-                    #np.save("C:\\Users\\raluca.chitic\\Desktop\\PhD\\tvs\\analysis\\results\\adversarials_frequency_bandstop\\{}\\{}\\{}\\{}.npy".format(attack_type,network,name,radius),filtered)
 
                     # Get prediction of filtered image
                     with torch.no_grad():
@@ -276,7 +268,6 @@ def bandstop_graph(attack_type):
                     preds_adv_orclass.append(pred_filtered[class_dict[name][0]])
                     preds_adv_targetclass.append(pred_filtered[class_dict[name][1]])
 
-                    
                 f, (ax1, ax2) = plt.subplots(1, 2, sharey=True, figsize=(10,5))
 
                 ax1.plot(np.log10(preds_ancestor_orclass),label='ancestor')
@@ -324,7 +315,7 @@ def partial_noise():
                 advBIM = np.load(path.format('BIM',network,name))      
                 path = results_path+'\\{}\\{}\\attack\\{}\\image.npy'
                 advEA = np.load(path.format('EA',network,name))                
-                or_ = cv2.imread(data_path+'\\imagenet_{}\\{}\\{}.jpg'.format(name,name,name)) #BGR image
+				or_ = cv2.imread(data_path.format(name,name,str(order))) #BGR image
                 or_ = cv2.resize(or_,(224,224))[:,:,::-1] #RGB image
                 ancestor = prediction_preprocess(Image.fromarray(or_.astype(np.uint8))).cpu().detach().numpy()
                 
