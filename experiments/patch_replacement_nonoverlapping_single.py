@@ -82,8 +82,7 @@ for i,model in enumerate(m):
 				ancestor = cv2.resize(ancestor,(224,224))[:,:,::-1] #RGB image
 				ancestor = ancestor.astype(np.uint8)
 				ancestor = prediction_preprocess(Image.fromarray(ancestor)).cpu().detach().numpy()
-				results_loc = base_path + "results"
-				filename = results_loc + "/{}/{}/attack/{}/image{}.npy".format(attack_name,network,name,str(order))
+				filename = results_path + "/{}/{}/attack/{}/image{}.npy".format(attack_name,network,name,str(order))
 				if os.path.exists(filename):
 					adv = np.load(filename)
 
@@ -99,7 +98,7 @@ for i,model in enumerate(m):
 						p_target.append(pred[0,target_class])
 
 					# save results
-					filename_save_orig = results_loc + "/{}/{}/patch_replacement_nonoverlapping_single/patch_size{}/{}/orig{}.npy".format(attack_name,network,patch_size,name,order)
-					filename_save_target = results_loc + "/{}/{}/patch_replacement_nonoverlapping_single/patch_size{}/{}/target{}.npy".format(attack_name,network,patch_size,name,order)
+					filename_save_orig = results_path + "/{}/{}/patch_replacement_nonoverlapping_single/patch_size{}/{}/orig{}.npy".format(attack_name,network,patch_size,name,order)
+					filename_save_target = results_path + "/{}/{}/patch_replacement_nonoverlapping_single/patch_size{}/{}/target{}.npy".format(attack_name,network,patch_size,name,order)
 					np.save(filename_save_orig,p_orig)
 					np.save(filename_save_target,p_target)
