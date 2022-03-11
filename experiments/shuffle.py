@@ -1,5 +1,5 @@
 '''
-Shuffle adversarial images with shuffle sizes: 8,16,32,56,112.
+Shuffle adversarial images with shuffle sizes: 16,32,56,112.
 Check how the CNNs classify the shuffled adverarial images.
 '''
 
@@ -56,9 +56,9 @@ def shuffle(im, comb1, comb2, half):
 networks = params.networks
 class_dict = params.class_dict
 names = params.names
-attack_name = 'EA'
 data_path = params.data_path
 results_path = params.results_path
+attack_name = 'EA'
 m=[]
 for network in networks:
 	m.append(create_torchmodel(network))
@@ -74,7 +74,7 @@ for i,model in enumerate(m):
 
 		for name in names:
 			for order in range(1,11):
-				results_loc = base_path + "results/{}".format(attack_name)
+				results_loc = results_path + "/{}".format(attack_name)
 				path = results_loc + "/{}/attack/{}/image{}.npy".format(network,name,str(order))
 				if os.path.exists(path):
 					print(network,shuffle_size,name)
