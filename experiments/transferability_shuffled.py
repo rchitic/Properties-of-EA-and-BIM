@@ -1,13 +1,10 @@
+'''
+Send both shuffled and unshuffled adversarial images to other CNNs and check if they other CNNs are fooled more with shuffled or unshuffled images
+'''
 import os
-import time
 import random
-#from skimage.metrics import structural_similarity as ssim
-import math
 import sys
-import cProfile
 import numpy as np
-import tensorflow as tf
-from tensorflow import keras
 import torch
 import random
 from random import shuffle
@@ -15,13 +12,6 @@ import cv2
 from PIL import Image
 
 import torch
-import torch.nn as nn
-import torch.optim as optim
-
-import torchvision.utils
-from torchvision import models
-import torchvision.datasets as dsets
-import torchvision.transforms as transforms
 
 from utils import create_torchmodel, softmax, prediction_preprocess
 
