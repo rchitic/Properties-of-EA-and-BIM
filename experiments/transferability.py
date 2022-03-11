@@ -60,9 +60,8 @@ for id_, network in enumerate(list(set(networks)-set([target_CNN_name]))):
 					ancestor = ancestor.astype(np.uint8)
 					ancestor = prediction_preprocess(Image.fromarray(ancestor.astype(np.uint8))).to('cuda')
 
-				if softmax(model(im.float()).cpu().detach().numpy())[0,target_class] >= 0.999:
-					pred = softmax(target_CNN(im.float()).cpu().detach().numpy())[0,pred_class] - softmax(target_CNN(ancestor).cpu().detach().numpy())[0,pred_class]
-					per_network.append(pred)
+				pred = softmax(target_CNN(im.float()).cpu().detach().numpy())[0,pred_class] - softmax(target_CNN(ancestor).cpu().detach().numpy())[0,pred_class]
+				per_network.append(pred)
 
 #write to log
 with open(log_file,'a') as f:
